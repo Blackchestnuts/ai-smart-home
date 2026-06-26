@@ -15,9 +15,9 @@ print(light2.get_status())
 try:
     light1.turn_on()  # 尝试再次开启已经开启的设备
 except DeviceAlreadyOnError as e:
-    print(f"错误: {e}")
+    print(f"报错提示: {e}")
 
 try:
     light2.turn_on()  # 尝试再次开启已经开启的设备
 except DeviceAlreadyOnError as e:
-    print(f"错误: {e}")
+    print(f"报错提示: {e}")
