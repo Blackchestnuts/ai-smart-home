@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 from app.routers import devices
+from app.routers import devices, chat
 
 # 自动建表
 Base.metadata.create_all(bind=engine)
@@ -22,7 +23,7 @@ app.add_middleware(
 
 # ===== 注册路由 =====
 app.include_router(devices.router)
-
+app.include_router(chat.router) # 🌟 新增
 @app.get("/")
 def read_root():
     return {"message": "欢迎来到 AI 智能家居后端 V2.0！"}

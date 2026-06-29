@@ -24,6 +24,7 @@ def create_device(device: schemas.DeviceCreate, db: Session = Depends(get_db)):
     return crud.create_new_device(db, device)
 
 @router.post("/{device_id}/on", response_model=schemas.DeviceResponse)
+#打开指定设备或根据变量打开最新的设备
 def turn_device_on(device_id: int, db: Session = Depends(get_db)):
     device = crud.get_device_by_id(db, device_id)
     if not device:
@@ -33,6 +34,7 @@ def turn_device_on(device_id: int, db: Session = Depends(get_db)):
     return crud.update_device_status(db, device, is_on=True)
 
 @router.post("/{device_id}/off", response_model=schemas.DeviceResponse)
+#关闭指定设备或者根据提取变量关闭最新的设备
 def turn_device_off(device_id: int, db: Session = Depends(get_db)):
     device = crud.get_device_by_id(db, device_id)
     if not device:

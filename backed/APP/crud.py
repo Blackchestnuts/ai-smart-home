@@ -2,6 +2,8 @@
 from sqlalchemy.orm import Session
 from database import DBDevice
 from app.schemas import DeviceCreate
+from database import Memory
+
 
 # 查询所有设备
 def get_all_devices(db: Session):
@@ -36,3 +38,20 @@ def delete_device(db: Session, device_id: int):
         db.commit()
     # 3. 返回被删除的设备对象（如果没找到，返回的是 None）
     return device
+
+# 在 app/crud.py 底部新增
+
+# 保存或更新记忆 (如果 key 已存在就覆盖)
+def save_memory(db: Session, key: str, value: str):
+    existing_memory = db.query(Memory).filter(Memory.key == key).first()
+    if existing_memory:
+        existing_memory.value = value
+    else:
+        new_memory = Memory(key=key, value=value)
+        db.add(new_memory)
+    db.commit()
+    return {"key": key, "value": value}
+
+# 获取所有记忆 (用于每次对话前喂给 AI)
+def get_all_memories(db: Session):
+    return db.query(Memory).all()

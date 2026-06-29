@@ -21,3 +21,10 @@ class DBDevice(Base):
     name = Column(String, index=True,nullable=False)
     room = Column(String, nullable=False)
     is_on = Column(Boolean, default=False,nullable=False)
+
+class Memory(Base):
+    __tablename__ = "memories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True, nullable=False)   # 记忆的键，如 "user_name", "preferred_temp"
+    value = Column(String, nullable=False)                          # 记忆的值，如 "张三", "26度"
