@@ -41,8 +41,6 @@ def turn_device_off(device_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=f"设备 [{device.name}] 已经关闭，无需重复操作！")
     return crud.update_device_status(db, device, is_on=False)
 
-# 在 app/routers/devices.py 底部新增
-
 @router.delete("/{device_id}")
 def delete_device(device_id: int, db: Session = Depends(get_db)):
     """删除指定ID的设备"""
