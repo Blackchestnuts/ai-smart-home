@@ -29,3 +29,82 @@
   font-size: 0.9em;
   color: #555;
 }
+/* 在原有的 App.css 底部追加即可 */
+
+.add-device-form {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.add-device-form form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.add-device-form input, .add-device-form select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.add-device-form button {
+  padding: 8px 15px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.device-card.card-on {
+  border-left: 4px solid #28a745;
+}
+
+.device-card.card-off {
+  border-left: 4px solid #dc3545;
+  opacity: 0.8;
+}
+
+.btn-on {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.btn-off {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+/* 按钮组，让开关和删除并排显示 */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* 删除按钮样式 */
+.btn-delete {
+  background-color: #6c757d; /* 灰色，不那么抢眼，但表明是次要/危险操作 */
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background-color: #dc3545; /* 鼠标悬停变红，警告危险 */
+}
