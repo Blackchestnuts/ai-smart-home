@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import ChatBox from './ChatBox' // 引入聊天组件
+import ChatBox from './ChatBox'
 
 function App() {
   const [devices, setDevices] = useState([])
@@ -65,20 +65,19 @@ function App() {
     } catch (err) { console.error("删除设备失败:", err) }
   }
 
-  // 传递给 ChatBox 的刷新函数，当 AI 操作了设备后，刷新左侧列表
   const refreshDevices = () => { fetchDevices() }
 
   return (
     <div className="app-container">
-      <h1>🏠 AI 智能家居控制台</h1>
+      <h1>🪴 我的温馨小家</h1>
       
-      {/* 核心布局：左右分栏 */}
+      {/* 经典的左右分栏布局 */}
       <div className="main-content">
         
-        {/* 左侧：设备管理区 */}
+        {/* 左侧：设备区 */}
         <div className="device-section">
           <div className="add-device-form">
-            <h3>录入新设备</h3>
+            <h3>✨ 添加新成员</h3>
             <form onSubmit={handleAddDevice}>
               <input 
                 type="text" 
@@ -127,7 +126,7 @@ function App() {
           </div>
         </div>
 
-        {/* 右侧：AI 聊天区 */}
+        {/* 右侧：聊天区 (保留带语音的ChatBox) */}
         <ChatBox onDeviceChanged={refreshDevices} />
 
       </div>
