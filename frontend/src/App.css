@@ -208,6 +208,53 @@ button {
   border: 1px solid rgba(0, 0, 0, 0.03);
 }
 
+/* =========================================
+   📱 响应式适配（P3-19）
+   ========================================= */
+@media (max-width: 1024px) {
+  .app-container {
+    padding: 20px 16px;
+  }
+  h1 {
+    font-size: 1.8em;
+    margin-bottom: 24px;
+  }
+  /* 中等屏幕：左右栏改为上下堆叠 */
+  .main-content {
+    flex-direction: column;
+  }
+  .chat-box {
+    width: 100%;
+    min-width: 0;
+    height: 500px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* 手机：单列网格，设备卡片占满宽度 */
+  .device-grid {
+    grid-template-columns: 1fr;
+  }
+  /* 表单元素堆叠 */
+  .add-device-form form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .add-device-form input,
+  .add-device-form select,
+  .add-device-form button {
+    width: 100%;
+  }
+  .chat-box {
+    height: 420px;
+    padding: 18px;
+  }
+  .msg {
+    max-width: 95%;
+    font-size: 0.9em;
+  }
+}
+
 .chat-box h3 {
   color: var(--accent-slate);
   margin-top: 0;

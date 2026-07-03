@@ -28,12 +28,16 @@
 
 - **设备管理**：增删改查 + 一键开关，状态幂等（重复开关返回 400 而非崩溃）。
 - **AI 自然语言控家**：基于智谱 GLM-4-Flash + Function Calling，用户说人话，AI 自动决策调用哪个工具。
-- **多轮对话**：前端携带最近 10 条历史，AI 不会"金鱼脑"。
+- **多轮对话 + 单轮多工具**：前端携带最近 10 条历史；用户说"开客厅灯和卧室空调"会同时执行两个 tool_call。
 - **长期记忆**：用户名、偏好温度、生活习惯等通过 `memories` 表持久化，每次对话注入 System Prompt。
+- **场景预设**：用户自定义"观影模式"、"用餐模式"等场景（设备动作组合），AI 一句话激活。
+- **实时多端同步**：基于 SSE（Server-Sent Events），A 浏览器开灯，B 浏览器无需刷新立即看到状态变化。
 - **场景模式**：
   - 🌙 **晚安模式**：`turn_off_all_devices` 一键全关
-  - 🏠 **回家模式**：`welcome_home_mode` 根据模拟室外温度自动开空调到舒适温度 + 点亮客厅灯
+  - 🏠 **回家模式**：`welcome_home_mode` 根据真实室外温度（OpenWeatherMap API）自动开空调到舒适温度 + 点亮客厅灯
 - **语音交互**：浏览器原生 Web Speech API，无需任何 SDK，支持中文语音输入与播报。
+- **用户系统**：注册 / 登录 / JWT 鉴权（可选启用，演示模式无需登录）。
+- **生产级基础设施**：连接池、限流、健康检查、结构化日志、错误脱敏、Alembic 迁移、GitHub Actions CI。
 
 ---
 
@@ -106,36 +110,45 @@ ai-smart-home/
 ├── backend.Dockerfile          # 后端镜像（多阶段构建）
 ├── frontend.Dockerfile         # 前端镜像（构建 + Nginx 反代）
 ├── docker/
-│   └── nginx.conf              # 前端 Nginx 配置（SPA fallback + /api 反代）
+│   └── nginx.conf              # 前端 Nginx 配置（SPA fallback + /api 反代 + SSE 透传）
 ├── .env.example                # 环境变量模板
 ├── .dockerignore
 ├── .gitignore
+├── .github/workflows/ci.yml    # GitHub Actions：后端测试 + 前端构建 + Docker 镜像验证
 │
-├── backed/                     # 后端代码（保留原仓库拼写）
-│   ├── main.py                 # FastAPI 入口
-│   ├── database.py             # ORM 模型 + 引擎配置
+├── backed/                     # 后端代码
+│   ├── main.py                 # FastAPI 入口（CORS + 日志 + 健康检查）
+│   ├── database.py             # ORM 模型（devices/memories/scenes/users）+ 连接池
 │   ├── home_device.py          # Device 领域模型 + 自定义异常
 │   ├── requirements.txt        # Python 依赖
+│   ├── alembic.ini             # Alembic 迁移配置
+│   ├── alembic/                # 迁移脚本
 │   ├── .env.example
 │   ├── app/
-│   │   ├── crud.py             # 数据库 CRUD 操作
+│   │   ├── crud.py             # 数据库 CRUD（设备/记忆/场景）
 │   │   ├── schemas.py          # Pydantic 请求/响应模型
+│   │   ├── sse.py              # SSE 事件广播器（订阅/取消/广播）
 │   │   └── routers/
-│   │       ├── devices.py      # /api/devices RESTful CRUD
-│   │       └── chat.py         # /api/chat AI 对话 + Function Calling
+│   │       ├── devices.py      # /api/devices RESTful CRUD + SSE 流
+│   │       ├── chat.py         # /api/chat AI 对话 + Function Calling（7 工具）
+│   │       ├── scenes.py       # /api/scenes 场景预设 CRUD + 激活
+│   │       └── auth.py         # /api/auth 注册/登录/JWT
 │   └── test_home_devices.py    # pytest 单元测试
 │
 ├── frontend/                   # 前端代码
-│   ├── package.json
-│   ├── vite.config.js
+│   ├── package.json            # 含 vitest 测试脚本
+│   ├── vite.config.js          # 含 vitest 配置
 │   ├── index.html
 │   ├── .env.example
 │   └── src/
 │       ├── main.jsx
-│       ├── App.jsx             # 设备管理面板
+│       ├── App.jsx             # 设备管理面板 + SSE 订阅
 │       ├── ChatBox.jsx         # AI 聊天 + 语音
-│       ├── App.css             # 温馨家居风配色
-│       └── index.css
+│       ├── App.css             # 温馨家居风配色 + 响应式适配
+│       ├── index.css
+│       └── __tests__/
+│           ├── ChatBox.test.jsx  # 组件测试
+│           └── setup.js
 │
 └── download/
     └── architecture.png        # 系统架构图（PNG）
@@ -268,8 +281,57 @@ Content-Type: application/json
 
 ```json
 {
-  "reply": "好的，已为您关闭卧室的空调。"
+  "reply": "好的，已为您关闭卧室的空调。",
+  "device_changed": true
 }
+```
+
+`device_changed` 为 `true` 时前端会刷新设备列表，为 `false` 时（纯闲聊）跳过刷新。
+
+### 场景预设
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/scenes` | 列出所有场景 |
+| POST | `/api/scenes` | 创建场景（body: `{name, description?, actions:[{device_id, is_on}]}`） |
+| DELETE | `/api/scenes/{id}` | 删除场景 |
+| POST | `/api/scenes/{id}/activate` | 激活场景（应用所有设备动作） |
+
+### 实时推送（SSE）
+
+```http
+GET /api/devices/stream
+Accept: text/event-stream
+```
+
+订阅后，任何设备状态变化（包括 AI 通过对话触发的）都会实时推送：
+
+```
+data: {"type": "updated", "device": {"device_id": 1, "name": "客厅灯", "room": "客厅", "is_on": true}}
+
+data: {"type": "created", "device": {...}}
+
+data: {"type": "deleted", "device_id": 3}
+```
+
+### 用户认证（可选）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/auth/register` | 注册（body: `{username, password}`） |
+| POST | `/api/auth/login` | 登录（form: `username`, `password`），返回 JWT |
+| GET | `/api/auth/me` | 查询当前用户（需 Bearer token） |
+
+当前为可选鉴权，未登录也能用所有功能；如需强制登录，把 `get_current_user_optional` 改为强制版本即可。
+
+### 健康检查
+
+```http
+GET /health
+```
+
+```json
+{"status": "ok", "database": "up"}
 ```
 
 完整的交互式 API 文档见 http://localhost:8000/docs（Swagger UI）。
@@ -278,7 +340,7 @@ Content-Type: application/json
 
 ## AI 工具集（Function Calling）
 
-`backed/app/routers/chat.py` 中定义了 6 个工具，GLM 会根据用户意图自动选择调用：
+`backed/app/routers/chat.py` 中定义了 7 个工具，GLM 会根据用户意图自动选择调用。**支持单轮多工具并发**——用户说"开客厅灯和卧室空调"会同时触发两个 tool_call。
 
 | 工具 | 触发场景 | 示例用户输入 |
 |---|---|---|
@@ -288,8 +350,9 @@ Content-Type: application/json
 | `turn_off_all_devices` | 全屋关闭 | "我要出门了"、"晚安" |
 | `welcome_home_mode` | 回家模式 | "我快到家了"、"我回来了" |
 | `save_user_memory` | 保存用户偏好 | "记住我喜欢 26 度"、"我叫张三" |
+| `activate_scene` | 激活预设场景 | "开启观影模式"、"切到用餐模式" |
 
-**回家模式逻辑**：根据模拟室外温度（28-38℃ 随机）自动决策空调模式：
+**回家模式逻辑**：根据真实室外温度（OpenWeatherMap API，未配置则回退模拟值）自动决策空调模式：
 - \> 30℃：制冷 24℃
 - < 15℃：制热 26℃
 - 其他：舒适送风 25℃

@@ -1,12 +1,12 @@
-#作用：负责规定前端能传什么，后端该返回什么
+"""Pydantic 请求/响应模型。"""
 from pydantic import BaseModel
 
-# 前端创建设备时传来的数据格式
+
 class DeviceCreate(BaseModel):
     name: str
     room: str
 
-# 后端返回给前端的数据格式（比 Create 多了 id 和 is_on）
+
 class DeviceResponse(BaseModel):
     device_id: int
     name: str
@@ -14,4 +14,26 @@ class DeviceResponse(BaseModel):
     is_on: bool
 
     class Config:
-        from_attributes = True  # 告诉 Pydantic：即使数据是从 ORM 对象来的，也能直接读取
+        from_attributes = True
+
+
+# ============ 场景预设 ============
+class SceneAction(BaseModel):
+    device_id: int
+    is_on: bool
+
+
+class SceneCreate(BaseModel):
+    name: str
+    description: str = ""
+    actions: list[SceneAction] = []
+
+
+class SceneResponse(BaseModel):
+    scene_id: int
+    name: str
+    description: str
+    actions: list[SceneAction] = []
+
+    class Config:
+        from_attributes = True

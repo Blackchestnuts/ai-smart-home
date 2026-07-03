@@ -26,6 +26,35 @@ function App() {
 
   useEffect(() => {
     fetchDevices()
+
+    // 🌟 SSE 订阅：设备状态变化时实时更新，多端同步
+    const es = new EventSource(`${API_BASE}/api/devices/stream`)
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data)
+        setDevices(prev => {
+          if (event.type === 'created') {
+            // 避免重复添加
+            if (prev.some(d => d.device_id === event.device.device_id)) return prev
+            return [...prev, event.device]
+          }
+          if (event.type === 'updated') {
+            return prev.map(d => d.device_id === event.device.device_id ? event.device : d)
+          }
+          if (event.type === 'deleted') {
+            return prev.filter(d => d.device_id !== event.device_id)
+          }
+          return prev
+        })
+      } catch (err) {
+        console.warn('SSE 解析失败:', err)
+      }
+    }
+    es.onerror = () => {
+      // 连接断开时静默，浏览器会自动重连
+    }
+
+    return () => es.close()
   }, [])
 
   const toggleDevice = async (device) => {

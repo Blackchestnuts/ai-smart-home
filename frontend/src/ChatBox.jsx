@@ -64,9 +64,8 @@ function ChatBox({ onDeviceChanged }) {
 
       speak(data.reply);
 
-      // 🌟 核心优化2：只要走了一次 AI 对话，就刷新设备列表
-      // （后端 chat.py 暂未返回 device_changed 标志位，这里统一刷新保险）
-      if (onDeviceChanged) {
+      // 🌟 后端返回 device_changed 标志位，只有设备状态变更时才刷新
+      if (data.device_changed && onDeviceChanged) {
         onDeviceChanged()
       }
     } catch (err) {
