@@ -10,7 +10,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -80,7 +81,7 @@ def get_current_user_optional(token: str | None = Depends(oauth2_scheme),
         if not username:
             return None
         return db.query(User).filter(User.username == username).first()
-    except JWTError:
+    except PyJWTError:
         return None
 
 
