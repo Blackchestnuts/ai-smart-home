@@ -5,53 +5,64 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 let recognition;
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
-  recognition.lang = 'zh-CN'; // 设置中文
-  recognition.continuous = false; // 不持续录音，识别完一句就停
-  recognition.interimResults = false; // 不要中间结果，只要最终结果
+  recognition.lang = 'zh-CN'; 
+  recognition.continuous = false; 
+  recognition.interimResults = false; 
 }
 
 function ChatBox({ onDeviceChanged }) {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
-  const [isListening, setIsListening] = useState(false) // 🌟 新增：是否正在录音
+  const [isListening, setIsListening] = useState(false) 
 
-  // 🌟 新增：语音播报函数
+  // 🌟 语音播报函数
   const speak = (text) => {
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); // 取消之前没读完的
+      window.speechSynthesis.cancel(); 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'zh-CN'; // 中文播报
-      utterance.rate = 1.0; // 语速
+      utterance.lang = 'zh-CN'; 
+      utterance.rate = 1.0; 
       window.speechSynthesis.speak(utterance);
     }
   }
 
-  // 修改后的发送函数，支持直接传入语音文字
+  // 🌟 优化后的发送函数：支持多轮对话上下文
   const sendMessage = async (e, voiceText = null) => {
     if (e) e.preventDefault();
-    const textToSend = voiceText || input; // 如果是语音传入，用语音的文本
+    const textToSend = voiceText || input; 
     if (!textToSend.trim()) return;
 
     const userMsg = { role: 'user', content: textToSend }
-    setMessages(prev => [...prev, userMsg])
-    setInput('') // 清空输入框
+    setMessages(prev => [...prev, userMsg]) // 先把用户消息显示在页面上
+    setInput('') 
     setLoading(true)
 
     try {
+      // 🌟 核心优化1：提取最近5轮(10条)历史记录发给后端，解决金鱼脑问题
+      const history = messages.slice(-10).map(msg => ({
+        role: msg.role, 
+        content: msg.content
+      }));
+
       const res = await fetch('http://localhost:8000/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: textToSend })
+        // 🌟 不仅发当前消息，还要发历史记录
+        body: JSON.stringify({ 
+          message: textToSend,
+          history: history 
+        })
       })
+      
       const data = await res.json()
       const aiMsg = { role: 'assistant', content: data.reply }
       setMessages(prev => [...prev, aiMsg])
       
-      // 🌟 核心：AI 回复后，自动语音播报！
       speak(data.reply);
 
-      if (data.reply && (data.reply.includes("已为您") || data.reply.includes("开启") || data.reply.includes("关闭"))) {
+      // 🌟 核心优化2：根据后端返回的标志位精准刷新设备，不再靠猜关键词
+      if (data.device_changed) {
         onDeviceChanged()
       }
     } catch (err) {
@@ -61,7 +72,7 @@ function ChatBox({ onDeviceChanged }) {
     setLoading(false)
   }
 
-  // 🌟 新增：处理麦克风点击
+  // 处理麦克风点击
   const toggleListen = () => {
     if (!recognition) {
       alert('您的浏览器不支持语音识别，请使用 Chrome 浏览器！');
@@ -69,25 +80,25 @@ function ChatBox({ onDeviceChanged }) {
     }
 
     if (isListening) {
-      recognition.stop(); // 如果正在听，点击则停止
+      recognition.stop(); 
     } else {
-      recognition.start(); // 开始录音
+      recognition.start(); 
       setIsListening(true);
     }
   }
 
-  // 🌟 新增：监听语音识别结果
+  // 监听语音识别结果
   useEffect(() => {
     if (!recognition) return;
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript; // 拿到识别的文字
-      setInput(transcript); // 填入输入框
-      sendMessage(null, transcript); // 🌟 直接自动发送！
+      const transcript = event.results[0][0].transcript; 
+      setInput(transcript); 
+      sendMessage(null, transcript); 
     };
 
     recognition.onend = () => {
-      setIsListening(false); // 录音结束，恢复状态
+      setIsListening(false); 
     };
 
     recognition.onerror = (event) => {
@@ -95,10 +106,9 @@ function ChatBox({ onDeviceChanged }) {
       setIsListening(false);
     };
 
-    // 组件卸载时清理
     return () => {
       if (recognition) recognition.stop();
-    };
+    }
   }, []) 
 
   return (
@@ -119,7 +129,6 @@ function ChatBox({ onDeviceChanged }) {
           onChange={(e) => setInput(e.target.value)} 
           placeholder="试试说：我有点冷" 
         />
-        {/* 🌟 新增：麦克风按钮 */}
         <button 
           type="button" 
           className={`mic-btn ${isListening ? 'listening' : ''}`} 
