@@ -1,5 +1,7 @@
 from sqlalchemy import create_engine,Column,Integer,String,Boolean
 from sqlalchemy.orm import declarative_base,sessionmaker
+import os
+from dotenv import load_dotenv
 
 #1.配置数据库连接 URL(对应刚才启动的Docker 启动的参数)
 SQLALCHEMY_DATABASE_URL = "postgresql://admin:123456@localhost:5432/smart_home"
@@ -28,3 +30,8 @@ class Memory(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, index=True, nullable=False)   # 记忆的键，如 "user_name", "preferred_temp"
     value = Column(String, nullable=False)                          # 记忆的值，如 "张三", "26度"
+
+load_dotenv() # 加载 .env 文件
+
+# 🌟 从环境变量读取，如果没有则用默认值（方便Docker部署）
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:123456@localhost:5432/smart_home")

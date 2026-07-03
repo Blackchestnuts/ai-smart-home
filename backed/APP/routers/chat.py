@@ -6,18 +6,21 @@ from app import crud, schemas
 from pydantic import BaseModel
 import json
 import random
+import os
+from dotenv import load_dotenv
+
+load_dotenv() # 确保在文件顶部调用
 
 router = APIRouter(prefix="/api/chat", tags=["AI 助手"])
-
-# 🌟 1. 配置大模型客户端 
-# ⚠️ 安全提醒：请替换为你自己的 API Key，不要上传到公开仓库！
+#配置大模型API客户端，使用环境变量中的API Key
 client = OpenAI(
-    api_key="34e9b194a77c45d0b58a8a7ccd862155.nO1dhiCGSijRAfBb",  
-    base_url="https://open.bigmodel.cn/api/paas/v4" # 智谱接口
+    api_key=os.getenv("GLM_API_KEY"), # 🌟 从环境变量读取
+    base_url="https://open.bigmodel.cn/api/paas/v4"
 )
 
 class ChatRequest(BaseModel):
     message: str
+    history: list[dict] = [] # 🌟 新增：接收前端传来的历史记录，默认为空
 
 # 🌟 2. 丰富工具库
 tools = [
@@ -146,13 +149,19 @@ def chat_with_assistant(req: ChatRequest, db: Session = Depends(get_db)):
 6. 如果用户说快到家了，请调用 welcome_home_mode。
 7. 如果无关智能家居，礼貌闲聊。
 """
-        # 4. 第一次请求
+                # 4. 第一次请求
+        # 🌟 构造完整的消息列表：系统提示词 + 历史记录 + 当前用户发言
+        chat_messages = [
+            {"role": "system", "content": system_prompt}
+        ]
+        # 把前端传来的历史记录塞进去
+        chat_messages.extend(req.history)
+        # 加上用户当前说的话
+        chat_messages.append({"role": "user", "content": req.message})
+
         response = client.chat.completions.create(
             model="glm-4-flash",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": req.message}
-            ],
+            messages=chat_messages, # 🌟 使用构造好的完整列表
             tools=tools,
             tool_choice="auto"
         )
