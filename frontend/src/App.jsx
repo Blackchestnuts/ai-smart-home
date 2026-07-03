@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import ChatBox from './ChatBox'
 
+// 后端 API 地址：开发时由 .env 注入，生产构建时由 docker-compose 注入
+// Vite 只暴露 VITE_ 前缀的环境变量
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+
 function App() {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
@@ -10,7 +14,7 @@ function App() {
 
   const fetchDevices = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/devices')
+      const res = await fetch(`${API_BASE}/api/devices`)
       const data = await res.json()
       setDevices(data)
       setLoading(false)
@@ -25,12 +29,12 @@ function App() {
   }, [])
 
   const toggleDevice = async (device) => {
-    const apiUrl = device.is_on 
-      ? `http://localhost:8000/api/devices/${device.device_id}/off`
-      : `http://localhost:8000/api/devices/${device.device_id}/on`
+    const apiUrl = device.is_on
+      ? `${API_BASE}/api/devices/${device.device_id}/off`
+      : `${API_BASE}/api/devices/${device.device_id}/on`
     try {
       const res = await fetch(apiUrl, { method: 'POST' })
-      if (res.ok) { fetchDevices() } 
+      if (res.ok) { fetchDevices() }
       else {
         const errData = await res.json()
         alert(`操作失败: ${errData.detail}`)
@@ -41,7 +45,7 @@ function App() {
   const handleAddDevice = async (e) => {
     e.preventDefault()
     try {
-      const res = await fetch('http://localhost:8000/api/devices', {
+      const res = await fetch(`${API_BASE}/api/devices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName, room: newRoom })
@@ -56,8 +60,8 @@ function App() {
   const handleDeleteDevice = async (deviceId, deviceName) => {
     if (!window.confirm(`确定要删除设备 [${deviceName}] 吗？`)) return
     try {
-      const res = await fetch(`http://localhost:8000/api/devices/${deviceId}`, { method: 'DELETE' })
-      if (res.ok) { fetchDevices() } 
+      const res = await fetch(`${API_BASE}/api/devices/${deviceId}`, { method: 'DELETE' })
+      if (res.ok) { fetchDevices() }
       else {
         const errData = await res.json()
         alert(`删除失败: ${errData.detail}`)
@@ -70,21 +74,21 @@ function App() {
   return (
     <div className="app-container">
       <h1>🪴 我的温馨小家</h1>
-      
+
       {/* 经典的左右分栏布局 */}
       <div className="main-content">
-        
+
         {/* 左侧：设备区 */}
         <div className="device-section">
           <div className="add-device-form">
             <h3>✨ 添加新成员</h3>
             <form onSubmit={handleAddDevice}>
-              <input 
-                type="text" 
-                placeholder="设备名称 (如: 落地灯)" 
+              <input
+                type="text"
+                placeholder="设备名称 (如: 落地灯)"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                required 
+                required
               />
               <select value={newRoom} onChange={(e) => setNewRoom(e.target.value)}>
                 <option>客厅</option>
@@ -107,14 +111,14 @@ function App() {
                   <h3>{device.room} - {device.name}</h3>
                   <p>状态：{device.is_on ? '🟢 运行中' : '🔴 已关闭'}</p>
                   <div className="btn-group">
-                    <button 
-                      className={device.is_on ? 'btn-off' : 'btn-on'} 
+                    <button
+                      className={device.is_on ? 'btn-off' : 'btn-on'}
                       onClick={() => toggleDevice(device)}
                     >
                       {device.is_on ? '一键关闭' : '一键开启'}
                     </button>
-                    <button 
-                      className="btn-delete" 
+                    <button
+                      className="btn-delete"
                       onClick={() => handleDeleteDevice(device.device_id, device.name)}
                     >
                       移除

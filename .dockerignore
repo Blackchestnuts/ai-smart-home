@@ -1,0 +1,26 @@
+# 通用 Docker 构建忽略
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.vscode
+**/.idea
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.log
+**/.DS_Store
+
+# Git
+.git
+.gitignore
+.github
+
+# 文档（构建镜像时不需要）
+README.md
+docs/
+**/*.md
+
+# 已生成的图
+download/
+scripts/

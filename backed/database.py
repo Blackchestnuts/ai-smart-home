@@ -1,37 +1,47 @@
-from sqlalchemy import create_engine,Column,Integer,String,Boolean
-from sqlalchemy.orm import declarative_base,sessionmaker
+"""数据库连接与 ORM 模型定义。
+
+环境变量：
+    DATABASE_URL  PostgreSQL 连接串，例如 postgresql://admin:123456@db:5432/smart_home
+                  （未设置时回退到本地开发地址 localhost:5432）
+"""
 import os
+from sqlalchemy import create_engine, Column, Integer, String, Boolean
+from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 
-#1.配置数据库连接 URL(对应刚才启动的Docker 启动的参数)
-SQLALCHEMY_DATABASE_URL = "postgresql://admin:123456@localhost:5432/smart_home"
+# 必须在读取 SQLALCHEMY_DATABASE_URL 之前加载 .env
+load_dotenv()
 
-#2.创建数据库引擎
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# 1. 配置数据库连接 URL（从环境变量读取，方便 Docker 部署）
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://admin:123456@localhost:5432/smart_home",
+)
 
-#3.创建会话工厂，用于后续在API中操作数据库
+# 2. 创建数据库引擎
+engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+
+# 3. 创建会话工厂，用于后续在 API 中操作数据库
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-#4.声明基类，所有的ORM模型类都将继承这个基类
+# 4. 声明基类，所有的 ORM 模型类都将继承这个基类
 Base = declarative_base()
 
-#5.定义Device 模型（对应数据库里的 devices 表）
+
+# 5. 定义 Device 模型（对应数据库里的 devices 表）
 class DBDevice(Base):
     __tablename__ = "devices"
 
     device_id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True,nullable=False)
+    name = Column(String, index=True, nullable=False)
     room = Column(String, nullable=False)
-    is_on = Column(Boolean, default=False,nullable=False)
+    is_on = Column(Boolean, default=False, nullable=False)
 
+
+# 6. 记忆表：AI 的长期记忆（KV 结构，每次对话注入到 System Prompt）
 class Memory(Base):
     __tablename__ = "memories"
 
     id = Column(Integer, primary_key=True, index=True)
-    key = Column(String, unique=True, index=True, nullable=False)   # 记忆的键，如 "user_name", "preferred_temp"
-    value = Column(String, nullable=False)                          # 记忆的值，如 "张三", "26度"
-
-load_dotenv() # 加载 .env 文件
-
-# 🌟 从环境变量读取，如果没有则用默认值（方便Docker部署）
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:123456@localhost:5432/smart_home")
+    key = Column(String, unique=True, index=True, nullable=False)   # 例：user_name, preferred_temp
+    value = Column(String, nullable=False)                          # 例：张三, 26度

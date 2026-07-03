@@ -1,0 +1,60 @@
+# AI 智能家居控制系统 · 一键部署
+#
+# 启动：docker compose up -d --build
+# 停止：docker compose down
+# 查看日志：docker compose logs -f backend
+#
+# 首次启动前请复制 .env.example 到 .env 并填入 GLM_API_KEY
+services:
+  # ============ 数据库 ============
+  db:
+    image: postgres:15-alpine
+    container_name: ai-smart-home-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      POSTGRES_DB: ${POSTGRES_DB:-smart_home}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"   # 调试时可直接连本地 5432；生产可移除此端口映射
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-smart_home}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ============ 后端 ============
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: ai-smart-home-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-123456}@db:5432/${POSTGRES_DB:-smart_home}
+      GLM_API_KEY: ${GLM_API_KEY:?缺少 GLM_API_KEY 环境变量，请参考 .env.example}
+    ports:
+      - "8000:8000"
+
+  # ============ 前端 ============
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+      args:
+        # 留空 = 前端走同源 /api 反代（nginx 已配置）
+        VITE_API_BASE: ${VITE_API_BASE:-}
+    container_name: ai-smart-home-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
